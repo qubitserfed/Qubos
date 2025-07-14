@@ -1,3 +1,5 @@
+# Qubos
+
 Polytime simulator of the Clifford modulo phase group.
 
 ### How to build this
