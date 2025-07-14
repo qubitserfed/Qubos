@@ -28,20 +28,23 @@ The -v flag prints the state in a verbose (human-readable) format.
 ./build/interface -v
 2
 H 0
+CNOT 0 1
+S 1
 (EOF)
 Phase polynomial matrix:
 0 0 
-0 0 
+0 1 
 Affine pair:
 A:
-0 1 
+1 1 
 B: 0 
 ```
 
 ```
-./build/interface -v
+./build/interface 
 2
 H 0
-(EOF)
-(2,00,0000,01,0)
+CNOT 0 1
+S 1
+(2,01,0000,11,0)
 ```

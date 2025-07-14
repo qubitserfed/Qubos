@@ -34,6 +34,10 @@ int main(int argc, char **argv) {
             std::cin >> targ;
             apply_z(state, targ);
         }
+        else if (gate == "S") {
+            std::cin >> targ;
+            apply_s(state, targ);
+        }
         else if (gate == "CNOT") {
             std::cin >> src >> targ;
             apply_cx(state, src, targ);
