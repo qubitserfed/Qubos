@@ -9,7 +9,7 @@ make interface
 ```
 
 ### Input format
-Number of qubits in the state, followed by a sequence of gates. Qubits are numbered from 0 to n-1.
+The number $n$ of qubits in the state, followed by a sequence of gates. Qubits are numbered from $0$ to $n-1$.
 ```
 n # number of qubits
 H targ # apply H to targ
