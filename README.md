@@ -1,6 +1,6 @@
 # Qubos
 
-Polytime simulator of the Clifford modulo phase group.
+Polytime simulator of the Clifford modulo phase group. This can be refactored into a phase-accurate clifford simulator, which is the goal of this project.
 
 ### How to build this
 ```
