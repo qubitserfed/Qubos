@@ -6,6 +6,8 @@ struct StabState {
     int n;
 
     int phase; // global phase, not used for now
+    int magnitude; // magnitude of the state, not used for now
+    bool is_zero; // whether the state is the zero state
 
     std::vector<int> lin_part;
     BMatrix quad_part; // diagonal gets ignored

@@ -46,16 +46,17 @@ StabState bell_states(int n) {
 
 // based on assumption at page 11 in my qec notebook
 StabState normal_form(StabState state) {
-    to_row_echelon(state.A, state.b);
+    std::vector<int> pivots;
 
-    std::vector<int> pivots = get_pivots(state.A, range(0, state.n));
+    to_row_echelon(state.A, state.b);
+    pivots = get_pivots(state.A, range(0, state.n));
 
     for (int piv = 0; piv < pivots.size(); ++piv) {
         int i, j, bi;
         std::vector<int> freevars;
 
         j = pivots[piv];
-        for (int k = 0; k < state.n; ++k) {
+        for (int k = 0; k < state.A.n; ++k) {
             if (state.A.get(k, j)) {
                 i = k;
                 break;
@@ -66,10 +67,10 @@ StabState normal_form(StabState state) {
         for (int k = j + 1; k < state.n; ++k)
             if (state.A.get(i, k))
                 freevars.push_back(k);
-        
+
 
         if (state.lin_part[j] & 1) {
-            state.phase = (state.phase + bi) % 4;
+            state.phase = (state.phase + 2 * bi) % 8;
             for (auto k: freevars)
                 state.lin_part[k] = (state.lin_part[k] + 1 + 2 * bi) % 4;
 
@@ -81,7 +82,7 @@ StabState normal_form(StabState state) {
         }
 
         if (state.lin_part[j] & 2) {
-            state.phase = (state.phase + 2 * bi) % 4;
+            state.phase = (state.phase + 4 * bi) % 8;
             for (auto k: freevars)
                 state.lin_part[k] = (state.lin_part[k] + 2) % 4;
 
@@ -95,7 +96,7 @@ StabState normal_form(StabState state) {
         std::vector<int> freevars;
 
         j = pivots[piv];
-        for (int k = 0; k < state.n; ++k) {
+        for (int k = 0; k < state.A.n; ++k) {
             if (state.A.get(k, j)) {
                 i = k;
                 break;
@@ -118,11 +119,11 @@ StabState normal_form(StabState state) {
 
         for (auto targ: cz_targs) {
             if (bi)
-                state.lin_part[targ] = (state.lin_part[targ] + 2) % 4; // semi-sure about this
+                state.lin_part[targ] = (state.lin_part[targ] + 2) % 4;
 
             for (auto replacement: freevars) {
                 if (replacement == targ) {
-                    state.lin_part[targ] = (state.lin_part[targ] + 2) % 4; // semi-sure about this as well
+                    state.lin_part[targ] = (state.lin_part[targ] + 2) % 4;
                 }
                 else {
                     state.quad_part.flip(targ, replacement);
@@ -200,12 +201,16 @@ void apply_h(StabState &state, int h_target) {
         }
         else {
             std::vector<int> w1_support;
+
             for (int i = 0; i < state.n; ++i)
                 if (w1.get(i))
                     w1_support.push_back(i);
 
+            state.phase = (state.phase + 7) % 8;
+            state.phase = (state.phase + 2 * p) % 8;
             for (int i = 0; i < w1_support.size(); ++i) { // full KCZ
                 for (int j = i + 1; j < w1_support.size(); ++j) {
+                    apply_cz(state, w1_support[i], w1_support[j]);
                     state.quad_part.flip(w1_support[i], w1_support[j]);
                     state.quad_part.flip(w1_support[j], w1_support[i]);
                 }
@@ -248,9 +253,7 @@ void apply_h(StabState &state, int h_target) {
                 I_basis.push_back(i);
 
         BVector sol = solve(state.A, state.b);
-        BVector zfrom_sol(n);
 
-        
         auto apply_cz = [&](int i, int j) -> void {
             state.quad_part.flip(i, j);
             state.quad_part.flip(j, i);
@@ -258,12 +261,23 @@ void apply_h(StabState &state, int h_target) {
                 state.lin_part[j] = (state.lin_part[j] + 2) % 4;
             if (sol.get(j))
                 state.lin_part[i] = (state.lin_part[i] + 2) % 4;
+            if (sol.get(i) && sol.get(j))
+                state.phase = (state.phase + 4) % 8;
         };
 
         auto apply_s = [&](int i) -> void {
             state.lin_part[i] = (state.lin_part[i] + 1) % 4;
-            if (sol.get(i))
+            if (sol.get(i)) {
                 state.lin_part[i] = (state.lin_part[i] + 2) % 4; /// WHY DID IT WORK WITHOUT THIS?!
+                state.phase = (state.phase + 2) % 8;
+            }
+        };
+
+        auto apply_z = [&](int i) -> void {
+            state.lin_part[i] = (state.lin_part[i] + 2) % 4;
+            if (sol.get(i)) {
+                state.phase = (state.phase + 4) % 8;
+            }
         };
 
         auto amazing_gadget = [&](int t) -> void {
@@ -271,21 +285,22 @@ void apply_h(StabState &state, int h_target) {
             for (int i = 0; i < m; ++i) {
                 int pi = pivots[i];
                 if (pi == t)
-                    state.lin_part[t] = (state.lin_part[t] + 2) % 4;
+                    apply_z(t);
                 else
                     apply_cz(t, pi);
             }
         };
 
-        state.lin_part[n - 1] = (state.lin_part[n - 1] + 2) % 4;
 
+//        apply_z(n - 1);
+        state.lin_part[n - 1] = (state.lin_part[n - 1] + 2) % 4; // this is the only time when we pull a phase gadget before shifting the affine space to the origin
         for (auto t : I_basis)
             amazing_gadget(pivots[t]);
         
         if ((sol * w1) ^ a1 ^ w1.get(n - 1)) {
-            state.lin_part[n - 1] = (state.lin_part[n - 1] + 2) % 4;
+            apply_z(n - 1);
             for (int i = 0; i < m; ++i)
-                state.lin_part[pivots[i]] = (state.lin_part[pivots[i]] + 2) % 4;
+                apply_z(pivots[i]);
         }
         
         if (a0) {
@@ -350,11 +365,14 @@ void print(StabState state) {
     for (int i = 0; i < state.b.n; ++i)
         std::cout << state.b.get(i) << " ";
     std::cout << std::endl;
+    std::cout << "Global phase: " << state.phase << std::endl;
+    std::cout << std::endl;
 }
 
 bool is_ground(StabState state) {
     bool flag = true;
  
+    flag&= state.phase == 0;
     flag&= state.A == identity(state.n);
     flag&= state.b.is_zero();
     flag&= state.lin_part == std::vector<int>(state.n, 0);
@@ -367,6 +385,7 @@ bool operator == (StabState u, StabState v) {
     v = normal_form(v);
 
     bool equal = true;
+    equal&= u.phase == v.phase;
     equal&= u.A == v.A;
     equal&= u.b == v.b;
     equal&= u.lin_part == v.lin_part;

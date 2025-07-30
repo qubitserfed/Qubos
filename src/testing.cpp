@@ -18,19 +18,25 @@ struct Gate {
 
 std::vector<std::string> gate_types = {
     "H",
+    "S",
     "CZ",
-    "SWAP",
-    "X",
-    "Z",
-    "S"
+    "SWAP"
 };
 
 std::vector<Gate> rand_mirror(int qubits, int depth) {
     std::vector<Gate> res;
     for (int i = 0; i < depth; ++i) {
-        int gate = rand() % gate_types.size();
-        int b = rand() % (qubits - 1) + 1;
-        int a = rand() % b;
+        int gate, a, b;
+        if (qubits == 1) {
+            gate = rand() % 2;
+            a = 0;
+            b = 0;
+        }
+        else {
+            gate = rand() % gate_types.size();
+            b = rand() % (qubits - 1) + 1;
+            a = rand() % b;
+        }
         res.push_back({gate_types[gate], a, b});
     }
 
@@ -59,8 +65,8 @@ std::vector<Gate> rand_mirror(int qubits, int depth) {
 }
 
 int main() {
-    const int N = 40;
-    const int depth = 100;
+    const int N = 10;
+    const int depth = 1000;
 
     if (false) {
         srand(32313);
@@ -157,10 +163,6 @@ int main() {
             }
 
             if (!is_ground(state)) {
-                //std::cout << "seed: " << seed << std::endl;
-                std::cout << "Not ground!!!!!!!!!!!!!!!!!" << std::endl;
-                std::cout << "Seed: " << seed << std::endl;
-
                 state = ground_state(N);
                 for (int ptr = 0; ptr < gates.size(); ++ptr) {
                     auto gate = gates[ptr];
@@ -192,8 +194,9 @@ int main() {
                     print(state);
                     std::cout << "--------------------------------" << std::endl;
                 }
-                std::cout << "OK!" << std::endl;
-                std::cout << seed << std::endl;
+                
+                std::cout << "Not ground!" << std::endl;
+                std::cout << "Seed: " <<  seed << std::endl;
                 break;
             }
         }
