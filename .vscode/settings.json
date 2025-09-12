@@ -54,7 +54,8 @@
         "complex": "cpp",
         "fstream": "cpp",
         "iomanip": "cpp",
-        "span": "cpp"
+        "span": "cpp",
+        "__config": "cpp"
     },
     "C_Cpp.default.compilerPath": "/usr/bin/clang++"
 }

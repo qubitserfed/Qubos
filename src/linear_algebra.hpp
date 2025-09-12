@@ -80,6 +80,7 @@ BVector             operator *                      (BVector, BMatrix);
 BVector             operator *                      (BMatrix, BVector);
 BMatrix             operator *                      (BMatrix, BMatrix);
 bool                operator ==                     (BMatrix, BMatrix);
+bool                operator !=                     (BMatrix, BMatrix);
 bool                is_zero                         (BMatrix);
 
 // Linear algebra algorithms

@@ -33,7 +33,6 @@ int popcount(u64 num) {
     return num;
 }
 
-
 /// Start of BVector definitions
 
 void BVector::swap(int i, int j) {
@@ -109,8 +108,8 @@ void BVector::push_back(bool val) {
 }
 
 void BVector::pop_back() {
-    n--;
     set(n, 0);
+    n--;
     vec.resize((n + 63) / 64);
 }
 
@@ -167,10 +166,6 @@ bool sym_prod(BVector a, BVector b) {
 /// End of BVector definitions
 /// -------------------------------------------------------
 /// Start of BMatrix definitions
-
-bool operator == (BMatrix a, BMatrix b) {
-    return a.mat == b.mat;
-}
 
 bool is_zero(BMatrix mat) {
     for (int i = 0; i < mat.n; ++i)
@@ -236,7 +231,7 @@ void BMatrix::append_column(BVector v) {
 }
 
 void BMatrix::pop_column() {
-    my_assert(m > 0);
+    my_assert(m > 0 || mat.empty());
     for (int i = 0; i < n; ++i)
         mat[i].pop_back();
     m-= 1;
@@ -395,6 +390,22 @@ BMatrix operator * (BMatrix a, BMatrix b) {
     return res;
 }
 
+bool operator == (BMatrix a, BMatrix b) {
+    if (a.empty() && b.empty())
+        return true;
+    if (a.empty() || b.empty())
+        return false;
+    if (a.n != b.n || a.m != b.m)
+        return false;
+
+    return a.mat == b.mat;
+}
+
+bool operator != (BMatrix a, BMatrix b) {
+    return !(a == b);
+}
+
+
 /// End of Bmatrix definitions
 /// -------------------------------------------------------
 /// Start of Linear algebra utilities
@@ -513,7 +524,7 @@ std::vector<int> get_pivots(BMatrix &mat, std::vector<int> cols) {
 // explainer: by canonical I mean that if V = [the space spanned by the the rows of M] and for two
 // vectors v and w, v + V = w + V, canonical_quotient(v, mat) will equal canonical_quotient(w, mat) 
 BVector canonical_quotient(BVector vec, BMatrix &mat) {
-    my_assert(vec.n == mat.m);
+    my_assert(vec.n == mat.m || mat.empty());
 
     const int n = mat.n;
     const int m = mat.m;
@@ -618,7 +629,7 @@ void to_row_echelon(BMatrix &mat, BVector &b) {
         if (mat.row(i).is_zero() && !b.get(i)) {
             mat.swap_rows(i, mat.n - 1);
             mat.pop_row();
-            b.swap(i, mat.n - 1);
+            b.swap(i, b.n - 1);
             b.pop_back();
             --i;
         }

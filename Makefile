@@ -17,6 +17,10 @@ CXXFLAGS = -Wall -Wextra -std=c++17 -Ofast -pthread -fPIC
 # Targets
 all: $(OBJ_FILES)
 
+# Build shared library (macOS)
+lib: $(OBJ_FILES_NO_INTERFACE_NO_TEST)
+	$(CXX) $(CXXFLAGS) -dynamiclib -o $(BUILD_DIR)/quboslib.so $(OBJ_FILES_NO_INTERFACE_NO_TEST)
+
 # Rule to build object files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
@@ -37,4 +41,4 @@ testing: $(BUILD_DIR)/testing.o $(OBJ_FILES_NO_testing)
 
 # Clean build directory
 clean:
-	rm -rf $(BUILD_DIR)/*.o $(BUILD_DIR)/interface $(BUILD_DIR)/testing
+	rm -rf $(BUILD_DIR)/*.o $(BUILD_DIR)/interface $(BUILD_DIR)/testing $(BUILD_DIR)/libqubos.dylib

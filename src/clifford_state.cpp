@@ -5,7 +5,7 @@
 
 #include "linear_algebra.hpp"
 #include "quantum_utilities.hpp"
-#include "clifford.hpp"
+#include "clifford_state.hpp"
 
 
 StabState ground_state(int n) {
@@ -13,8 +13,11 @@ StabState ground_state(int n) {
 
     res.n = n;
     res.phase = 0;
+    res.magnitude = 0;
+    res.is_zero = false;
     res.lin_part = std::vector<int>(n, 0);
     res.quad_part = BMatrix(n, n);
+    res.is_zero = false;
 
     res.A = identity(n);
     res.b = BVector(n);
@@ -31,6 +34,7 @@ StabState bell_states(int n) {
     res.phase = 0;
     res.lin_part = std::vector<int>(2 * n);
     res.quad_part = BMatrix(2 * n, 2 * n);
+    res.is_zero = false;
 
     res.A = BMatrix(n, 2 * n);
     res.b = BVector(n);
@@ -46,6 +50,9 @@ StabState bell_states(int n) {
 
 // based on assumption at page 11 in my qec notebook
 StabState normal_form(StabState state) {
+    if (state.is_zero)
+        return state;
+
     std::vector<int> pivots;
 
     to_row_echelon(state.A, state.b);
@@ -141,28 +148,72 @@ StabState normal_form(StabState state) {
 }
 
 void apply_cz(StabState &state, int i, int j) {
+    if (state.is_zero)
+        return;
+
     state.quad_part.flip(i, j);
     state.quad_part.flip(j, i);
 }
 
 void apply_cx(StabState &state, int i, int j) {
+    if (state.is_zero)
+        return;
+
     apply_h(state, j);
     apply_cz(state, i, j);
     apply_h(state, j);
 }
 
 void apply_s(StabState &state, int i) {
+    if (state.is_zero)
+        return;
+
     state.lin_part[i] = (state.lin_part[i] + 1) % 4;
 }
 
 void apply_swap(StabState &state, int i, int j) {
+    if (state.is_zero)
+        return;
+
     state.A.swap_cols(i, j);
     state.quad_part.swap_cols(i, j);
     state.quad_part.swap_rows(i, j);
     std::swap(state.lin_part[i], state.lin_part[j]);
 }
 
+void permute(StabState &state, std::vector<int> perm) {
+    if (state.is_zero)
+        return;
+
+    std::vector<int> witness(state.n);
+    for (int i = 0; i < state.n; ++i)
+        witness[i] = i;
+
+
+    std::vector<bool> visited(state.n, false);
+    std::function<void(int)> consume_cycle = [&](int i) -> void {
+        if (visited[perm[i]] || visited[i])
+            return;
+
+        apply_swap(state, i, perm[i]);
+        std::swap(witness[i], witness[perm[i]]);
+        visited[i] = true;
+        consume_cycle(perm[i]);
+    };
+
+    for (int i = 0; i < state.n; ++i)
+        if (!visited[i])
+            consume_cycle(i);
+
+    my_assert(witness == perm);
+
+    state = normal_form(state);
+}
+
 void apply_x(StabState &state, int i) {
+    if (state.is_zero)
+        return;
+
     // TO REPLACE THIS BULLSHIT:
     apply_h(state, i);
     apply_z(state, i);
@@ -170,18 +221,27 @@ void apply_x(StabState &state, int i) {
 }
 
 void apply_z(StabState &state, int i) {
+    if (state.is_zero)
+        return;
+
     state.lin_part[i] = (state.lin_part[i] + 2) % 4;
 }
 
 void apply_h(StabState &state, int h_target) {
+    if (state.is_zero)
+        return;
+
     apply_swap(state, state.n - 1, h_target); // applies hadamard TO THE LAST QUBIT after conjugating with swap(h_target, state.n)
+
+//    print(state);
+//    print_superposition(state);
 
     int n = state.n;
     BVector w0(n), w1(n);
 
     int a = state.lin_part[n - 1];
-    int a0 = (a & 1);
-    int a1 = (a & 2) >> 1;
+    int a0 = ((3 * a) & 1);
+    int a1 = ((3 * a) & 2) >> 1;
 
     for (int k = 0; k < n - 1; ++k)
         if (state.quad_part.get(k, n - 1))
@@ -193,8 +253,8 @@ void apply_h(StabState &state, int h_target) {
 
     if ((state.A * versor(state.n, state.n - 1)).is_zero()) {
         int p = (a1 + int(w0.get(n - 1))) % 2;
-        
         state.lin_part[n - 1] = (state.lin_part[n - 1] + 2) % 4;
+
         if (!a0) {
             state.A.append_row(w1);
             state.b.push_back(p);
@@ -207,19 +267,20 @@ void apply_h(StabState &state, int h_target) {
                     w1_support.push_back(i);
 
             state.phase = (state.phase + 7) % 8;
-            state.phase = (state.phase + 2 * p) % 8;
             for (int i = 0; i < w1_support.size(); ++i) { // full KCZ
                 for (int j = i + 1; j < w1_support.size(); ++j) {
                     apply_cz(state, w1_support[i], w1_support[j]);
-                    state.quad_part.flip(w1_support[i], w1_support[j]);
-                    state.quad_part.flip(w1_support[j], w1_support[i]);
                 }
             }
-            for (auto i : w1_support)
-                state.lin_part[i] = (state.lin_part[i] + 1) % 4;
-            if (!p) {
+
+            if (p) {
                 for (auto i : w1_support)
-                    state.lin_part[i] = (state.lin_part[i] + 2) % 4;
+                    state.lin_part[i] = (state.lin_part[i] + 1) % 4; 
+            }
+            else {
+                for (auto i : w1_support)
+                    state.lin_part[i] = (state.lin_part[i] + 3) % 4;
+                state.phase = (state.phase + 2) % 8; // double check this
             }
         }
     }
@@ -297,25 +358,24 @@ void apply_h(StabState &state, int h_target) {
         for (auto t : I_basis)
             amazing_gadget(pivots[t]);
         
-        if ((sol * w1) ^ a1 ^ w1.get(n - 1)) {
+        if ((sol * w1) ^ a1 ^ 1) {
             apply_z(n - 1);
             for (int i = 0; i < m; ++i)
                 apply_z(pivots[i]);
         }
         
         if (a0) {
-            std::vector<int> cz_domain;
+            std::vector<int> domain;
             for (int i = 0; i < m; ++i)
-                cz_domain.push_back(pivots[i]);
-            cz_domain.push_back(n - 1);
+                domain.push_back(pivots[i]);
+            domain.push_back(n - 1);
 
-            for (int i = 0; i < cz_domain.size(); ++i)
-                for (int j = i + 1; j < cz_domain.size(); ++j)
-                    apply_cz(cz_domain[i], cz_domain[j]);
+            for (int i = 0; i < domain.size(); ++i)
+                for (int j = i + 1; j < domain.size(); ++j)
+                    apply_cz(domain[i], domain[j]);
 
-            apply_s(n - 1);
-            for (int i = 0; i < m; ++i)
-                apply_s(pivots[i]);
+            for (int i = 0; i < domain.size(); ++i)
+                apply_s(domain[i]);
         }
         
         std::tie(state.A, state.b) = affine_extension(state.A, state.b, versor(n, n - 1));
@@ -324,7 +384,65 @@ void apply_h(StabState &state, int h_target) {
     apply_swap(state, state.n - 1, h_target);
 }
 
+void push_qubit(StabState &state) {
+    if (state.is_zero)
+        return;
+
+    state.n += 1;
+    state.lin_part.push_back(0);
+
+    state.quad_part.append_column(BVector(state.n - 1));
+    state.quad_part.append_row(BVector(state.n));
+
+    state.A.append_column(BVector(state.A.n));
+    state.A.append_row(BVector(state.n));
+    state.A.set(state.A.n - 1, state.n - 1, 1);
+
+    state.b.push_back(0);
+    state = normal_form(state);
+}
+
+void pop_qubit(StabState &state) { // postselect last qubit to be 0
+    if (state.is_zero)
+        return;
+
+    BMatrix eqsys = state.A;
+    eqsys.append_column(state.b);
+    to_row_echelon(eqsys);
+
+    if (in_span(eqsys, versor(state.n + 1, state.n - 1) + versor(state.n + 1, state.n))) { // if the value of the last qubit is forced to be one, the state maps to zero
+        state.is_zero = true;
+        state.n-= 1;
+    }
+    else if (in_span(eqsys, versor(state.n + 1, state.n - 1))) { // if the value of the last qubit is forced to be zero
+        state.A.pop_column();
+        state.n -= 1;
+        state.lin_part.pop_back();
+        state.quad_part.pop_column();
+        state.quad_part.pop_row();
+        state = normal_form(state);
+    }
+    else { // otherwise, we project onto that and change the magnitude
+        state.A.append_row(versor(state.n, state.n - 1));
+        state.b.push_back(0);
+        state = normal_form(state);
+
+        state.magnitude+= 1;
+        state.A.pop_column();
+        state.lin_part.pop_back(); 
+        state.quad_part.pop_row();
+        state.quad_part.pop_column();
+        state.n-= 1;
+        state = normal_form(state);
+    }
+}
+
 void print_compact(StabState state) {
+    if (state.is_zero) {
+        std::cout << "(0)\n";
+        return;
+    }
+
     std::cout << "(";
     std::cout << state.n << ",";
     for (int i = 0; i < state.n; ++i)
@@ -335,15 +453,23 @@ void print_compact(StabState state) {
             std::cout << state.quad_part.get(i, j);
     std::cout << ',';
     for (int i = 0; i < state.A.n; ++i)
-        for (int j = 0; j < state.A.m; ++j)
+        for (int j = 0; j < state.n; ++j)
             std::cout << state.A.get(i, j);
     std::cout << ',';
     for (int i = 0; i < state.b.n; ++i)
         std::cout << state.b.get(i);
+    std::cout << ", " << state.magnitude;
+    std::cout << ", " << state.phase;
     std::cout<< ")\n";
 }
 
 void print(StabState state) {
+    if (state.is_zero) {
+        std::cout << "Zero state\n";
+        return;
+    }
+
+    std::cout << "Magnitude: 1/2^" << state.magnitude << std::endl;
     std::cout << "Phase polynomial matrix:\n";
     for (int i = 0; i < state.n; ++i) {
         for (int j = 0; j < state.n; ++j) {
@@ -367,6 +493,53 @@ void print(StabState state) {
     std::cout << std::endl;
     std::cout << "Global phase: " << state.phase << std::endl;
     std::cout << std::endl;
+}
+
+StabState tensor(StabState u, StabState v) {
+    StabState res;
+
+    res.n = u.n + v.n;
+    res.phase = (u.phase + v.phase) % 8;
+    res.magnitude = u.magnitude + v.magnitude;
+    res.is_zero = u.is_zero || v.is_zero;
+    res.lin_part = std::vector<int>(res.n);
+    res.quad_part = BMatrix(res.n, res.n);
+    
+    if (res.is_zero)
+        return res;
+
+    // set affine space
+    res.A = BMatrix(u.A.n + v.A.n, u.n + v.n);
+    res.b = BVector(u.A.n + v.A.n);
+
+    for (int i = 0; i < u.A.n; ++i)
+        for (int j = 0; j < u.n; ++j)
+            res.A.set(i, j, u.A.get(i, j));
+
+    for (int i = 0; i < v.A.n; ++i)
+        for (int j = 0; j < v.n; ++j)
+            res.A.set(i + u.A.n, j + u.n, v.A.get(i, j));
+
+    for (int i = 0; i < u.b.n; ++i)
+        res.b.set(i, u.b.get(i));
+    for (int i = 0; i < v.b.n; ++i)
+        res.b.set(i + u.b.n, v.b.get(i));
+
+    // set phase polynomial matrix
+    for (int i = 0; i < u.n; ++i)
+        for (int j = 0; j < u.n; ++j)
+            res.quad_part.set(i, j, u.quad_part.get(i, j));
+    for (int i = 0; i < v.n; ++i)
+        for (int j = 0; j < v.n; ++j)
+            res.quad_part.set(i + u.n, j + u.n, v.quad_part.get(i, j));
+
+    // set linear part
+    for (int i = 0; i < u.n; ++i)
+        res.lin_part[i] = u.lin_part[i];
+    for (int i = 0; i < v.n; ++i)
+        res.lin_part[i + u.n] = v.lin_part[i];
+
+    return normal_form(res);
 }
 
 bool is_ground(StabState state) {
@@ -393,7 +566,6 @@ bool operator == (StabState u, StabState v) {
 
     return equal;
 }
-
 
 void print_superposition(StabState state) {
     std::function<void(std::vector<bool>)> bkt = [&](std::vector<bool> arr) -> void {
@@ -444,5 +616,44 @@ void print_superposition(StabState state) {
     };
 
     bkt(std::vector<bool>());
-    std::cout << '\n';
+    std::cout << '\n'; 
+}
+
+bool real_proj_eq(StabState u, StabState v) { // check if u and v coincide in everything except the magnitude
+    u = normal_form(u);
+    v = normal_form(v);
+
+    bool equal = true;
+
+    if (u.is_zero && v.is_zero)
+        return true;
+
+    equal&= u.is_zero == v.is_zero;
+    equal&= u.phase == v.phase;
+    equal&= u.A == v.A;
+    equal&= u.b == v.b;
+    equal&= u.lin_part == v.lin_part;
+    equal&= u.quad_part == v.quad_part;
+
+    return equal;
+}
+
+std::string to_string(StabState state) {
+    std::string res = "(";
+    res += std::to_string(state.n) + ",";
+    for (int i = 0; i < state.n; ++i)
+        res += std::to_string(state.lin_part[i]);
+    res += ",";
+    for (int i = 0; i < state.n; ++i)
+        for (int j = 0; j < state.n; ++j)
+            res += std::to_string(state.quad_part.get(i, j));
+    res += ",";
+    for (int i = 0; i < state.A.n; ++i)
+        for (int j = 0; j < state.n; ++j)
+            res += std::to_string(state.A.get(i, j));
+    res += ",";
+    for (int i = 0; i < state.b.n; ++i)
+        res += std::to_string(state.b.get(i));
+    res += "," + std::to_string(state.magnitude) + "," + std::to_string(state.phase) + ")";
+    return res;
 }

@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "clifford.hpp"
+#include "clifford_state.hpp"
 
 int main(int argc, char **argv) {
     std::string gate;
@@ -50,11 +50,19 @@ int main(int argc, char **argv) {
             std::cin >> src >> targ;
             apply_cz(state, src, targ);
         }
+        else if (gate == "PUSH") {
+            push_qubit(state);
+        }
+        else if (gate == "POP") {
+            pop_qubit(state);
+        }
         state = normal_form(state);
     }
 
-    if (verbose_flag)
+    if (verbose_flag) {
         print(state);
+        print_superposition(state);
+    }
     else
         print_compact(state);
 
