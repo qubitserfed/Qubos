@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include "linear_algebra.hpp"
 
 struct StabState {
