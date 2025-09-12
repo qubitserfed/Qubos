@@ -12,14 +12,14 @@ SRC_FILES := $(wildcard $(SRC_DIR)/*.cpp)
 OBJ_FILES := $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(SRC_FILES))
 
 # Flags
-CXXFLAGS = -Wall -Wextra -std=c++17 -Ofast -pthread -fPIC
+CXXFLAGS = -std=c++17 -Ofast -pthread -fPIC
 
 # Targets
 all: $(OBJ_FILES)
 
 # Build shared library (macOS)
 lib: $(OBJ_FILES_NO_INTERFACE_NO_TEST)
-	$(CXX) $(CXXFLAGS) -dynamiclib -o $(BUILD_DIR)/quboslib.so $(OBJ_FILES_NO_INTERFACE_NO_TEST)
+	$(CXX) $(CXXFLAGS) -shared -o $(BUILD_DIR)/quboslib.so $(OBJ_FILES_NO_INTERFACE_NO_TEST)
 
 # Rule to build object files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
