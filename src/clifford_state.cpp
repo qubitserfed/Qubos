@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <functional>
 #include <iostream>
+#include <string>
 #include <vector>
 
 #include "linear_algebra.hpp"
