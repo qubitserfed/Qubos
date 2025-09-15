@@ -5,6 +5,10 @@
 #include <iostream>
 
 
+bool operator == (CliffordMap f, CliffordMap g) {
+    return f.state == g.state && f.in_wires == g.in_wires && f.out_wires == g.out_wires;
+}
+
 CliffordMap tensor(CliffordMap f, CliffordMap g) {
     CliffordMap h;
 
@@ -61,6 +65,7 @@ CliffordMap compose(CliffordMap f, CliffordMap g) {
         pop_qubit(h_state);
         pop_qubit(h_state);
     }
+    h_state.magnitude+= 1;
 
     CliffordMap h;
     h.state = normal_form(h_state);
@@ -80,6 +85,13 @@ CliffordMap id_map(int n) {
     }
     h.state = normal_form(h.state);
     
+    return h;
+}
+
+CliffordMap swap_map() {
+    CliffordMap h = id_map(2);
+    apply_swap(h.state, 2, 3);
+    h.state = normal_form(h.state);
     return h;
 }
 
@@ -111,13 +123,6 @@ CliffordMap s_map() {
     return h;
 }
 
-CliffordMap cnot_map() {
-    CliffordMap h = id_map(2);
-    apply_cx(h.state, 0, 1);
-    h.state = normal_form(h.state);
-    return h;
-}
-
 CliffordMap cx_map() {
     CliffordMap h = id_map(2);
     apply_cx(h.state, 2, 3);
@@ -130,4 +135,55 @@ CliffordMap cz_map() {
     apply_cz(h.state, 2, 3);
     h.state = normal_form(h.state);
     return h;
+}
+
+CliffordMap zero_projector() {
+    CliffordMap h = id_map(1);
+    push_qubit(h.state);
+    apply_cx(h.state, 1, 2);
+    pop_qubit(h.state);
+    h.state.magnitude+= 1;
+    return h;
+}
+
+CliffordMap from_state(StabState state) {
+    CliffordMap h;
+    h.state = state;
+    h.in_wires = 0;
+    h.out_wires = state.n;
+    return h;
+}
+
+StabState apply_map(CliffordMap f, StabState state) {
+    if (f.in_wires != state.n) {
+        std::cerr << "The number of input wires of the map and the size of the state do not match" << std::endl;
+        my_assert(0);
+    }
+
+    StabState res = tensor(state, f.state);
+
+    for (int i = 0; i < state.n; ++i) {
+        apply_cz(res, i, i + state.n);
+        apply_h(res, i);
+    }
+    
+    std::vector<int> perm(res.n);
+
+    // place state wires
+    for (int i = 0; i < state.n; ++i) // [0, in_wires) -> [2 * in_wires, 2 * in_wires + state.n)
+        perm[i] = i + f.out_wires;
+
+    // place in wires
+    for (int i = 0; i < f.in_wires; ++i) // [in_wires, in_wires + f.in_wires) -> [0, f.in_wires)
+        perm[i + f.in_wires] = i + f.out_wires + f.in_wires;
+
+    //place out wires
+    for (int i = 0; i < f.out_wires; ++i)
+        perm[i + 2 * f.in_wires] = i;
+
+    permute(res, perm);
+    for (int i = 0; i < 2 * state.n; ++i)
+        pop_qubit(res);
+
+    return res;
 }

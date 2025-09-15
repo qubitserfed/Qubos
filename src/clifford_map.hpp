@@ -10,6 +10,7 @@ struct CliffordMap {
     int in_wires, out_wires;
 };
 
+bool operator == (CliffordMap f, CliffordMap g);
 CliffordMap compose(CliffordMap f, CliffordMap g);
 CliffordMap tensor(CliffordMap f, CliffordMap g);
 CliffordMap id_map(int n);
@@ -17,7 +18,9 @@ CliffordMap h_map();
 CliffordMap x_map();
 CliffordMap z_map();
 CliffordMap s_map();
-CliffordMap cnot_map();
 CliffordMap cx_map();
 CliffordMap cz_map();
-
+CliffordMap zero_projector();
+CliffordMap swap_map();
+CliffordMap from_state(StabState state);
+StabState   apply_map(CliffordMap f, StabState state);

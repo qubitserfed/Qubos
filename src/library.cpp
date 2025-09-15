@@ -162,10 +162,6 @@ CliffordMap *qb_s_map() {
     return new CliffordMap(s_map());
 }
 
-CliffordMap *qb_cnot_map() {
-    return new CliffordMap(cnot_map());
-}
-
 CliffordMap *qb_cx_map() {
     return new CliffordMap(cx_map());
 }
