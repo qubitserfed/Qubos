@@ -116,6 +116,25 @@ CliffordMap z_map() {
     return h;
 }
 
+CliffordMap y_map() {
+    CliffordMap h = compose(z_map(), compose(x_map(), i_map()));
+    return h;
+}
+
+CliffordMap i_map() {
+    CliffordMap h = id_map(0);
+    h.state.phase = 2;
+    h.in_wires = 0, h.out_wires = 0;
+    return h;
+}
+
+CliffordMap j_map() {
+    CliffordMap h = id_map(0);
+    h.state.phase = 1;
+    h.in_wires = 0, h.out_wires = 0;
+    return h;
+}
+
 CliffordMap s_map() {
     CliffordMap h = id_map(1);
     apply_s(h.state, 1);

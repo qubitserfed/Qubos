@@ -13,6 +13,22 @@ struct StabState {
     std::vector<int> lin_part;
     BMatrix quad_part; // diagonal gets ignored
 
+    StabState(int n) {
+        this->n = n;
+        this->phase = 0;
+        this->magnitude = 0;
+        this->is_zero = false;
+        this->lin_part = std::vector<int>(n, 0);
+        this->quad_part = BMatrix(n, n);
+
+        this->A = identity(n);
+        this->b = BVector(n);
+    }
+
+    StabState() {
+        StabState(0);
+    }
+
     BMatrix A;
     BVector b; // define affine space Ax=b
 };
@@ -39,3 +55,4 @@ bool        is_ground           (StabState);
 void        print_superposition (StabState);
 bool        real_proj_eq        (StabState, StabState);
 std::string to_string           (StabState);
+std::string to_latex            (StabState);

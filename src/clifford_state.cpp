@@ -1,7 +1,12 @@
 #include <algorithm>
+#include <bit>
 #include <functional>
 #include <iostream>
+#include <numeric>
+#include <sstream>
 #include <string>
+#include <tuple>
+#include <utility>
 #include <vector>
 
 #include "linear_algebra.hpp"
@@ -657,4 +662,109 @@ std::string to_string(StabState state) {
         res += std::to_string(state.b.get(i));
     res += "," + std::to_string(state.magnitude) + "," + std::to_string(state.phase) + ")";
     return res;
+}
+
+std::string to_latex(StabState _state) {
+    if (_state.is_zero)
+        return "0";
+    if (_state.n > 60)
+        throw std::runtime_error("to_latex: state has more than 60 qubits");
+
+    std::ostringstream oss;
+
+    StabState state = normal_form(_state);
+
+    // collect terms
+    std::vector<BVector> terms;
+    for (int i = 0; i < (1 << state.n); ++i) {
+        BVector term(state.n);
+        for (int j = 0; j < state.n; ++j)
+            term.set(j, i & (1 << j));
+        if (state.A * term != state.b)
+            continue;
+        terms.push_back(term);
+    }
+
+    std::sort(terms.begin(), terms.end(), [&](BVector a, BVector b) -> bool {
+        return a.vec[0] < b.vec[0];
+    });
+
+    // print global phase
+    if (state.phase != 0) {
+        int frac_up = state.phase * 2; // numerator
+        int frac_down = 8; // denominator
+
+        int gcd = std::gcd(frac_up, frac_down);
+        std::tie(frac_up, frac_down) = std::make_pair(frac_up / gcd, frac_down / gcd);
+
+        oss << "e^{";
+        if (frac_down != 1)
+            oss << "\\frac{" << frac_up << " \\pi i}{" << frac_down << "}";
+        else
+            oss << frac_up << " \\pi i";
+        oss << "}";
+        oss << "\\cdot";
+    }
+
+    // print magnitude
+    int magnitude = state.magnitude + 31 - __builtin_clz(terms.size());
+    if (magnitude != 0) {
+        if (magnitude != 1)
+            oss << "\\frac{1}{\\sqrt{2^{" << magnitude << "}}}";
+        else
+            oss << "\\frac{1}{\\sqrt{2}}";
+    }
+
+    if (state.n > 0) {
+        if (!(magnitude == 0 && state.phase ==0))
+            oss << "\\left(";
+        for (int i = 0; i < terms.size(); ++i) {
+            BVector term = terms[i];
+            int relphase = 0;
+            relphase+= (state.quad_part * term) * term; // first product is matrix-vector multiplication, second is dot product
+            for (int j = 0; j < state.n; ++j)
+                if (term.get(j))
+                    relphase+= state.lin_part[j];
+            relphase%= 4;
+
+            if (i != 0) {
+                switch (relphase) {
+                    case 0:
+                        oss << "+";
+                        break;
+                    case 1:
+                        oss << "+i";
+                        break;
+                    case 2:
+                        oss << "-";
+                        break;
+                    case 3:
+                        oss << "-i";
+                        break;
+                }
+            }
+            else {
+                switch (relphase) {
+                    case 1:
+                        oss << "i";
+                        break;
+                    case 2:
+                        oss << "-";
+                        break;
+                    case 3:
+                        oss << "-i";
+                        break;
+                }
+            }
+            oss << "|";
+            for (int j = 0; j < state.n; ++j)
+                oss << (term.get(j) ? 1 : 0);
+            oss << "\\rangle";
+        }
+        if (!(magnitude == 0 && state.phase ==0))
+            oss << "\\right)";
+    }
+
+
+    return oss.str();
 }

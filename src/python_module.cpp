@@ -10,20 +10,20 @@ namespace py = pybind11;
 PYBIND11_MODULE(Extension, module) {
     module.doc() = "Qubos is a library for quantum Stabilizer simulation";
 
-    py::class_<CliffordMap>(module, "CliffordMap")
+    py::class_<CliffordMap>(module, "Map")
         .def(py::init<>())
         .def("__eq__", static_cast<bool (*)(CliffordMap, CliffordMap)>(&operator==))
-        .def("__mul__", compose)
-        .def("magnitude", [&](CliffordMap self) -> int {
+        .def("__mul__", &compose)
+        .def("magnitude", [&](CliffordMap &self) -> int {
             return self.state.magnitude;
         })
-        .def("phase", [&](CliffordMap self) -> int {
+        .def("phase", [&](CliffordMap &self) -> int {
             return self.state.phase;
         })
-        .def("in_wires", [&](CliffordMap self) -> int {
+        .def("in_wires", [&](CliffordMap &self) -> int {
             return self.in_wires;
         })
-        .def("out_wires", [&](CliffordMap self) -> int {
+        .def("out_wires", [&](CliffordMap &self) -> int {
             return self.out_wires;
         })
         .def("s", [&](CliffordMap& self, int pos) -> CliffordMap& {
@@ -54,7 +54,11 @@ PYBIND11_MODULE(Extension, module) {
             apply_swap(self.state, pos0 + self.in_wires, pos1 + self.in_wires);
             return self;
         })
-        .def("prep_qubit", [&](CliffordMap& self, int pos) -> CliffordMap& {
+        .def("prep_zero", [&](CliffordMap& self) -> CliffordMap& {
+            push_qubit(self.state);
+            return self;
+        })
+        .def("prep_zero", [&](CliffordMap& self, int pos) -> CliffordMap& {
             push_qubit(self.state);
             for (int i = self.state.n - 1; i > pos; --i)
                 apply_swap(self.state, i, i - 1);
@@ -76,21 +80,31 @@ PYBIND11_MODULE(Extension, module) {
     module.def("h_map", &h_map);
     module.def("x_map", &x_map);
     module.def("z_map", &z_map);
+    module.def("y_map", &y_map);
+    module.def("i_map", &i_map);
+    module.def("j_map", &j_map);
     module.def("s_map", &s_map);
     module.def("cx_map", &cx_map);
     module.def("cz_map", &cz_map);
     module.def("swap_map", &swap_map);
     module.def("zero_projector", &zero_projector);
+    module.def("zero_prep", [&](CliffordMap &self) -> CliffordMap {
+        CliffordMap res = self;
+        push_qubit(res.state);
+        res.in_wires = 0, res.out_wires = 1;
+        return res;
+    });
 
-    py::class_<StabState>(module, "StabilizerState")
+    py::class_<StabState>(module, "State")
         .def(py::init<>())
+        .def(py::init<int>())
         .def("__eq__", static_cast<bool (*)(StabState, StabState)>(&operator==))
         .def("magnitude", [&](StabState self) -> int { return self.magnitude; })
         .def("phase", [&](StabState self) -> int { return self.phase; })
         .def("n", [&](StabState self) -> int { return self.n; })
         .def("is_zero", [&](StabState self) -> bool { return self.is_zero; })
         .def("affine_part", [&](StabState self) -> py::tuple {
-            py::array_t<bool> A = py::array_t<bool>({self.A.n, self.A.m});
+            py::array_t<int> A = py::array_t<int>({self.A.n, self.A.m});
             auto buffA = A.mutable_unchecked<2>();
             for (int i = 0; i < self.A.n; ++i) {
                 for (int j = 0; j < self.A.m; ++j) {
@@ -115,6 +129,25 @@ PYBIND11_MODULE(Extension, module) {
                 }
             }
             return res;
+        })
+        .def("__latex_rep", [&](StabState self) -> std::string {
+            return to_latex(self);
+        })
+        .def("zero_prep", [&](StabState &self) -> StabState {
+            push_qubit(self);
+            return self;
+        })
+        .def("zero_prep", [&](StabState &self, int pos) -> StabState {
+            push_qubit(self);
+            for (int i = self.n - 1; i > pos; --i)
+                apply_swap(self, i, i - 1);
+            return self;
+        })
+        .def("zero_postselect", [&](StabState &self, int pos) -> StabState {
+            for (int i = pos; i < self.n - 1; ++i)
+                apply_swap(self, i, i + 1);
+            pop_qubit(self);
+            return self;
         });
 
 
@@ -131,7 +164,6 @@ PYBIND11_MODULE(Extension, module) {
     module.def("push_qubit", &push_qubit);
     module.def("pop_qubit", &pop_qubit);
     module.def("apply_map", &apply_map);
-    
     module.def("choi_state", [&](CliffordMap self) -> StabState {
         return self.state;
     });

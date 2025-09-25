@@ -12,7 +12,9 @@ SRC_FILES := $(wildcard $(SRC_DIR)/*.cpp)
 OBJ_FILES := $(patsubst $(SRC_DIR)/%.cpp, $(BUILD_DIR)/%.o, $(SRC_FILES))
 
 # Flags
-CXXFLAGS = -std=c++17 -Ofast -pthread -fPIC
+PYTHON ?= .venv/bin/python3
+CXXFLAGS = -std=c++20 -Ofast -pthread -fPIC
+CXXFLAGS += $(shell $(PYTHON) -m pybind11 --includes)
 
 # Targets
 all: $(OBJ_FILES)
