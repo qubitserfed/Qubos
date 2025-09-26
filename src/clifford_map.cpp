@@ -117,7 +117,10 @@ CliffordMap z_map() {
 }
 
 CliffordMap y_map() {
-    CliffordMap h = compose(z_map(), compose(x_map(), i_map()));
+    CliffordMap h = id_map(1);
+    apply_z(h.state, 1);
+    apply_x(h.state, 1);
+    h.state.phase = (h.state.phase + 2) % 8;
     return h;
 }
 
@@ -162,6 +165,7 @@ CliffordMap zero_projector() {
     apply_cx(h.state, 1, 2);
     pop_qubit(h.state);
     h.state.magnitude+= 1;
+    h.in_wires = 1, h.out_wires = 0;
     return h;
 }
 
@@ -182,7 +186,7 @@ StabState apply_map(CliffordMap f, StabState state) {
     StabState res = tensor(state, f.state);
 
     for (int i = 0; i < state.n; ++i) {
-        apply_cz(res, i, i + state.n);
+        apply_cx(res, i, i + state.n);
         apply_h(res, i);
     }
     
@@ -190,15 +194,20 @@ StabState apply_map(CliffordMap f, StabState state) {
 
     // place state wires
     for (int i = 0; i < state.n; ++i) // [0, in_wires) -> [2 * in_wires, 2 * in_wires + state.n)
-        perm[i] = i + f.out_wires;
+        perm[i] = i + 2 * state.n;
 
     // place in wires
-    for (int i = 0; i < f.in_wires; ++i) // [in_wires, in_wires + f.in_wires) -> [0, f.in_wires)
-        perm[i + f.in_wires] = i + f.out_wires + f.in_wires;
+    for (int i = 0; i < f.in_wires; ++i) // [in_wires, in_wires + f.in_wires) -> [f.in_wires, 2 * f.in_wires)
+        perm[i + state.n] = i + state.n;
 
     //place out wires
-    for (int i = 0; i < f.out_wires; ++i)
-        perm[i + 2 * f.in_wires] = i;
+    for (int i = 0; i < f.out_wires; ++i) // [2 * in_wires, 2 * in_wires + f.out_wires) -> [state.n, state.n + f.out_wires)
+        perm[i + 2 * state.n] = i;
+
+    std::vector<int> inv_perm(res.n);
+    for (int i = 0; i < res.n; ++i)
+        inv_perm[perm[i]] = i;
+    perm = inv_perm;
 
     permute(res, perm);
     for (int i = 0; i < 2 * state.n; ++i)

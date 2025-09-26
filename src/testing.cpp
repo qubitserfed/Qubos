@@ -607,7 +607,6 @@ int main() {
     apply_cx(res, 2, 3);
     res = normal_form(res);
 
-
     apply_h(res, 2); // fault is here
     res = normal_form(res);
 

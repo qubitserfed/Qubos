@@ -191,27 +191,25 @@ void permute(StabState &state, std::vector<int> perm) {
     if (state.is_zero)
         return;
 
-    std::vector<int> witness(state.n);
-    for (int i = 0; i < state.n; ++i)
-        witness[i] = i;
+    my_assert(perm.size() == (size_t)state.n);
 
+    // Validate that perm is a bijection on [0, n)
+    std::vector<bool> seen(state.n, false);
+    for (int i = 0; i < state.n; ++i) {
+        my_assert(0 <= perm[i] && perm[i] < state.n);
+        my_assert(!seen[perm[i]]);
+        seen[perm[i]] = true;
+    }
 
-    std::vector<bool> visited(state.n, false);
-    std::function<void(int)> consume_cycle = [&](int i) -> void {
-        if (visited[perm[i]] || visited[i])
-            return;
-
-        apply_swap(state, i, perm[i]);
-        std::swap(witness[i], witness[perm[i]]);
-        visited[i] = true;
-        consume_cycle(perm[i]);
-    };
-
-    for (int i = 0; i < state.n; ++i)
-        if (!visited[i])
-            consume_cycle(i);
-
-    my_assert(witness == perm);
+    // Realize the permutation in-place using swaps while updating perm.
+    // Semantics: element originally at position i moves to position perm[i].
+    for (int i = 0; i < state.n; ++i) {
+        while (perm[i] != i) {
+            int j = perm[i];
+            apply_swap(state, i, j);
+            std::swap(perm[i], perm[j]);
+        }
+    }
 
     state = normal_form(state);
 }
@@ -699,9 +697,9 @@ std::string to_latex(StabState _state) {
 
         oss << "e^{";
         if (frac_down != 1)
-            oss << "\\frac{" << frac_up << " \\pi i}{" << frac_down << "}";
+            oss << "\\frac{" << (frac_up == 1 ? "" : std::to_string(frac_up)) << " \\pi i}{" << frac_down << "}";
         else
-            oss << frac_up << " \\pi i";
+            oss << (frac_up == 1 ? "" : std::to_string(frac_up)) << " \\pi i";
         oss << "}";
         oss << "\\cdot";
     }

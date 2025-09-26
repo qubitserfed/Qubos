@@ -56,18 +56,21 @@ PYBIND11_MODULE(Extension, module) {
         })
         .def("prep_zero", [&](CliffordMap& self) -> CliffordMap& {
             push_qubit(self.state);
+            self.out_wires+= 1;
             return self;
         })
         .def("prep_zero", [&](CliffordMap& self, int pos) -> CliffordMap& {
             push_qubit(self.state);
-            for (int i = self.state.n - 1; i > pos; --i)
+            for (int i = self.state.n - 1; i > pos + self.in_wires; --i)
                 apply_swap(self.state, i, i - 1);
+            self.out_wires+= 1;
             return self;
         })
-        .def("ground_postselect", [&](CliffordMap& self, int pos) -> CliffordMap& {
-            for (int i = pos; i < self.state.n - 1; ++i)
+        .def("post_zero", [&](CliffordMap& self, int pos) -> CliffordMap& {
+            for (int i = pos + self.in_wires; i < self.state.n - 1; ++i)
                 apply_swap(self.state, i, i + 1);
             pop_qubit(self.state);
+            self.out_wires-= 1;
             return self;
         })
         .def("clone", [&](CliffordMap self) -> CliffordMap {
@@ -77,7 +80,7 @@ PYBIND11_MODULE(Extension, module) {
     module.def("map_tensor", static_cast<CliffordMap (*)(CliffordMap, CliffordMap)>(&tensor));
     module.def("compose", &compose);
     module.def("id_map", &id_map);
-    module.def("h_map", &h_map);
+    module.def("h_map", &h_map); 
     module.def("x_map", &x_map);
     module.def("z_map", &z_map);
     module.def("y_map", &y_map);
@@ -87,9 +90,9 @@ PYBIND11_MODULE(Extension, module) {
     module.def("cx_map", &cx_map);
     module.def("cz_map", &cz_map);
     module.def("swap_map", &swap_map);
-    module.def("zero_projector", &zero_projector);
-    module.def("zero_prep", [&](CliffordMap &self) -> CliffordMap {
-        CliffordMap res = self;
+    module.def("zero_post", &zero_projector);
+    module.def("zero_prep", [&]() -> CliffordMap {
+        CliffordMap res;
         push_qubit(res.state);
         res.in_wires = 0, res.out_wires = 1;
         return res;
@@ -148,6 +151,9 @@ PYBIND11_MODULE(Extension, module) {
                 apply_swap(self, i, i + 1);
             pop_qubit(self);
             return self;
+        })
+        .def("clone", [&](StabState self) -> StabState {
+            return self;
         });
 
 
@@ -164,7 +170,7 @@ PYBIND11_MODULE(Extension, module) {
     module.def("push_qubit", &push_qubit);
     module.def("pop_qubit", &pop_qubit);
     module.def("apply_map", &apply_map);
-    module.def("choi_state", [&](CliffordMap self) -> StabState {
+    module.def("choi_state", [&](CliffordMap &self) -> StabState {
         return self.state;
     });
 
