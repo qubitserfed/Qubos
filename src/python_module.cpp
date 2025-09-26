@@ -155,6 +155,34 @@ PYBIND11_MODULE(Extension, module) {
             pop_qubit(self);
             return self;
         })
+        .def("h", [&](StabState &self, int pos) -> StabState {
+            apply_h(self, pos);
+            return self;
+        })
+        .def("x", [&](StabState &self, int pos) -> StabState {
+            apply_x(self, pos);
+            return self;
+        })
+        .def("z", [&](StabState &self, int pos) -> StabState {
+            apply_z(self, pos);
+            return self;
+        })
+        .def("cx", [&](StabState &self, int pos0, int pos1) -> StabState {
+            apply_cx(self, pos0, pos1);
+            return self;
+        })
+        .def("cz", [&](StabState &self, int pos0, int pos1) -> StabState {
+            apply_cz(self, pos0, pos1);
+            return self;
+        })
+        .def("swap", [&](StabState &self, int pos0, int pos1) -> StabState {
+            apply_swap(self, pos0, pos1);
+            return self;
+        })
+        .def("s", [&](StabState &self, int pos) -> StabState {
+            apply_s(self, pos);
+            return self;
+        })
         .def("clone", [&](StabState self) -> StabState {
             return self;
         });
