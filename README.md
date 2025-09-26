@@ -5,5 +5,13 @@ A python package for **phase accurate** simulation of the Clifford category. Can
 * $|0 \rangle$ state preparation
 
 ## Installation
+This is a python package, so just `pip install [the repo location on your computer]`.
 
 ## Usage
+```python
+from qubos import *
+x = x_map(), z = z_map(), swap = swap_map()
+print(swap * tensor(x, z) * swap == tensor(z, x))
+```
+
+For more examples, see the [tutorial](examples/tutorial.ipynb) notebook.
