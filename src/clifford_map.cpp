@@ -52,6 +52,12 @@ CliffordMap compose(CliffordMap f, CliffordMap g) {
         perm[2 * i + 1 + f.in_wires + g.out_wires] = f.in_wires + f.out_wires + i;
     }
 
+    std::vector<int> inv_perm(h_state.n);
+    for (int i = 0; i < h_state.n; ++i)
+        inv_perm[perm[i]] = i;
+    perm = inv_perm;
+
+
     permute(h_state, perm); h_state = normal_form(h_state);
 
     for (int i = 0; i < f.out_wires; ++i) {
@@ -64,8 +70,8 @@ CliffordMap compose(CliffordMap f, CliffordMap g) {
     for (int i = 0; i < f.out_wires; ++i) {
         pop_qubit(h_state);
         pop_qubit(h_state);
+        h_state.magnitude-= 1;
     }
-    h_state.magnitude+= 1;
 
     CliffordMap h;
     h.state = normal_form(h_state);
@@ -213,5 +219,6 @@ StabState apply_map(CliffordMap f, StabState state) {
     for (int i = 0; i < 2 * state.n; ++i)
         pop_qubit(res);
 
+    res.magnitude-= f.in_wires;
     return res;
 }
