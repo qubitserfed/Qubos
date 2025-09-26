@@ -85,6 +85,7 @@ CliffordMap id_map(int n) {
     h.state = ground_state(2 * n);
     h.in_wires = n;
     h.out_wires = n;
+    h.state.magnitude = -n;
     for (int i = 0; i < n; ++i) {
         apply_h(h.state, i);
         apply_cx(h.state, i, i + n);

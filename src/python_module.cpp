@@ -102,7 +102,10 @@ PYBIND11_MODULE(Extension, module) {
         .def(py::init<>())
         .def(py::init<int>())
         .def("__eq__", static_cast<bool (*)(StabState, StabState)>(&operator==))
-        .def("magnitude", [&](StabState self) -> int { return self.magnitude; })
+        .def("magnitude", [&](StabState self) -> int {
+            normal_form(self);
+            return self.magnitude + self.n - self.A.n;
+        })
         .def("phase", [&](StabState self) -> int { return self.phase; })
         .def("n", [&](StabState self) -> int { return self.n; })
         .def("is_zero", [&](StabState self) -> bool { return self.is_zero; })
