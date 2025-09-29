@@ -18,11 +18,11 @@ ext_modules = [
 ]
 
 setup(
-    name="Qubos",
+    name="qubos",
     version="0.0.1",
     author="Șerban",
     description="A library for quantum Stabilizer simulation",
-    packages=["Qubos"],
+    packages=["qubos"],
     package_dir={"": "src"},
     ext_modules=ext_modules,
     cmdclass={"build_ext": build_ext},

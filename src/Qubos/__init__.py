@@ -1,4 +1,4 @@
-from Qubos.Extension import *
+from qubos.Extension import *
 import IPython.display
 
 def to_latex(state : State) -> str:
